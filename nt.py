@@ -8,12 +8,15 @@ import nnabla as nn
 import nnabla.functions as F
 import nnabla.parametric_functions as PF
 import nnabla.solvers as S
+import nnabla.utils.save as nn_save
 
 import numpy as np
 import numpy.random as R
 
 import pylab
 import matplotlib.pyplot as plt
+
+batch_size = 100
 
 if len(sys.argv) > 1:
     seed = np.int64(sys.argv[1])
@@ -23,7 +26,7 @@ else:
 print("Seed:", seed)
 R.seed(seed)
 
-def random_data(size=100):
+def random_data(size=batch_size):
     pq = R.rand(size, 2) * 2.0 - 1.0
     pqt = pq.transpose()
     p = pqt[0]
@@ -113,13 +116,49 @@ for i in range(1000):
 # Show prediction
 
 x.d, t.d = random_data()
-print(t.d.reshape(100))
+print(t.d.reshape(batch_size))
 y.forward()
 preds = y.d.argmax(axis=1)
 
 for name, param in nn.get_parameters().items():
     print(name, param.shape, param.g.flat[:20])
 
-#plot_classified(x.d, t.d.reshape(100), preds)
+#plot_classified(x.d, t.d.reshape(batch_size), preds)
 
-print(loss.parent)
+exit(0)
+
+print(dir(loss.parent))
+print(loss.parent.inputs)
+print(loss.parent.inputs[0].parent)
+print(loss.parent.inputs[0].parent.inputs)
+print(loss.parent.inputs[0].parent.inputs[0].parent)
+print(loss.parent.inputs[0].parent.inputs[1].parent)
+print(loss.parent.inputs[0].parent.inputs[0].parent.inputs)
+print(loss.parent.inputs[0].parent.inputs[0].parent.inputs[0].parent)
+print(loss.parent.inputs[0].parent.inputs[0].parent.inputs[1].parent)
+print(loss.parent.inputs[0].parent.inputs[0].parent.inputs[2].parent)
+print(loss.parent.inputs[0].parent.inputs[0].parent.inputs[0].parent.inputs)
+print(loss.parent.inputs[0].parent.inputs[0].parent.inputs[0].parent.inputs[0].parent)
+print(loss.parent.inputs[0].parent.inputs[0].parent.inputs[0].parent.inputs[0].parent.inputs)
+print(loss.parent.inputs[0].parent.inputs[0].parent.inputs[0].parent.inputs[0].parent.inputs[0].parent)
+print(loss.parent.inputs[0].parent.inputs[0].parent.inputs[0].parent.inputs[0].parent.inputs[1].parent)
+print(loss.parent.inputs[0].parent.inputs[0].parent.inputs[0].parent.inputs[0].parent.inputs[2].parent)
+
+exit(0)
+
+fn = '{}.nnp'.format(str(seed))
+print("Saving to file:", fn)
+nn_save.save(fn, {
+    'networks': [
+        {'name': 'net1',
+         'batch_size': batch_size,
+         'outputs': {'y': y},
+         'names': {'x': x}}
+    ],
+    'executors': [
+        {'name': 'runtime',
+         'network': 'net1',
+         'data': ['x'],
+         'output': ['y']}
+    ],
+})
