@@ -28,30 +28,33 @@ print("Test loss:", loss.d)
 
 #plot_classified(x.d, t.d.reshape(BATCH_SIZE), preds)
 
-def nnabla_to_smt2(var, collect={}, rcollect={}, assertions=[],
+def nnabla_to_smt2(var, names={}, collect={}, rcollect={}, assertions=[],
                    nid=0, normal=True):
     if var in rcollect:
         return collect  # already processed this variable
     rcollect[var] = nid
+    if var not in names:
+        names[var] = 'var_{}'.format(nid)
     collect[nid] = var
-    cur_nid = nid
+    cur_name = names[var]
     nid += 1
     if var.parent is not None:
         print(var.parent)
         print(var.parent.inputs)
         print(type(var.parent.inputs))
         for index, input in enumerate(var.parent.inputs):
-            _, _, nid = nnabla_to_smt2(input, collect, rcollect, assertions,
-                                          nid, index == 0)
+            _, _, nid = nnabla_to_smt2(input, names, collect, rcollect,
+                                       assertions, nid, index == 0)
+
         if var.parent.name == 'ReLU':
             assert normal
             assert len(var.parent.inputs) == 1
             assert len(var.shape) == 2
             assert var.parent.inputs[0].shape == var.shape
-            param_nid = rcollect[var.parent.inputs[0]]
+            param_name = names[var.parent.inputs[0]]
             for index in range(var.shape[1]):
-                assertions.append('(= var_{}_{} (max 0 var_{}_{}))'.format(
-                    cur_nid, index, param_nid, index
+                assertions.append('(= {}_{} (max 0 {}_{}))'.format(
+                    cur_name, index, param_name, index
                 ))
         elif var.parent.name == 'Affine':
             # Wx + b -- W and b are trained parameters
@@ -67,17 +70,17 @@ def nnabla_to_smt2(var, collect={}, rcollect={}, assertions=[],
             assert var_W.shape[0] == var_x.shape[1]
             assert var_W.shape[1] == var.shape[1]
             assert var_W.shape[1] == var_b.shape[0]
-            x_nid = rcollect[var_x]
+            x_name = names[var_x]
             for i in range(var.shape[1]):
                 terms = []
                 for j in range(var_x.shape[1]):
-                    terms.append('(* {} var_{}_{})'.format(
+                    terms.append('(* {} {}_{})'.format(
                         var_W.d[j][i],
-                        x_nid,
+                        x_name,
                         j
                     ))
-                assertions.append('(= var_{}_{} (+ {} {}))'.format(
-                    cur_nid,
+                assertions.append('(= {}_{} (+ {} {}))'.format(
+                    cur_name,
                     i,
                     var_b.d[i],
                     ' '.join(terms)
@@ -86,7 +89,7 @@ def nnabla_to_smt2(var, collect={}, rcollect={}, assertions=[],
             raise Exception('Unsupported function: {}'.format(var.parent.name))
     return collect, assertions, nid
 
-collect, assertions, _ = nnabla_to_smt2(y)
+collect, assertions, _ = nnabla_to_smt2(y, {x: 'x', y: 'y'})
 for nid, var in collect.items():
     print(nid, var, var.ndim)
 for assertion in assertions:
