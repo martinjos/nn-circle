@@ -64,6 +64,24 @@ def nnabla_to_smt2(var, collect={}, rcollect={}, assertions=[],
             assert len(var_x.shape) == 2
             assert len(var_W.shape) == 2
             assert len(var_b.shape) == 1
+            assert var_W.shape[0] == var_x.shape[1]
+            assert var_W.shape[1] == var.shape[1]
+            assert var_W.shape[1] == var_b.shape[0]
+            x_nid = rcollect[var_x]
+            for i in range(var.shape[1]):
+                terms = []
+                for j in range(var_x.shape[1]):
+                    terms.append('(* {} var_{}_{})'.format(
+                        var_W.d[j][i],
+                        x_nid,
+                        j
+                    ))
+                assertions.append('(= var_{}_{} (+ {} {}))'.format(
+                    cur_nid,
+                    i,
+                    var_b.d[i],
+                    ' '.join(terms)
+                ))
         else:
             raise Exception('Unsupported function: {}'.format(var.parent.name))
     return collect, assertions, nid
