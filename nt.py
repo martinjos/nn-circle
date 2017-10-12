@@ -1,164 +1,92 @@
 #!/usr/bin/env python3
 
-import math
-import time
-import sys
-
 import nnabla as nn
-import nnabla.functions as F
-import nnabla.parametric_functions as PF
-import nnabla.solvers as S
-import nnabla.utils.save as nn_save
-
-import numpy as np
+import nnabla.functions as F  # it crashes without this
 import numpy.random as R
+import itertools as IT
 
-import pylab
-import matplotlib.pyplot as plt
+# I hate you, Python
+import os
+from pathlib import Path
+exec(Path(os.path.dirname(__file__) + '/' + 'ntshared.py').read_text())
 
-batch_size = 100
+seed()
 
-if len(sys.argv) > 1:
-    seed = np.int64(sys.argv[1])
-else:
-    seed = np.int64(np.float64(time.time()).view(np.uint64) % 2**32)
+x, t, y, loss, hs = setup_network()
 
-print("Seed:", seed)
-R.seed(seed)
+train_network(loss)
 
-def random_data(size=batch_size):
-    pq = R.rand(size, 2) * 2.0 - 1.0
-    pqt = pq.transpose()
-    p = pqt[0]
-    q = pqt[1]
-
-    hyp = np.hypot(p, q)
-    label = (hyp <= 1.0).astype(int).reshape(hyp.size, 1)
-
-    return pq, label
-
-def plot_classified(pq, exps, preds):
-    fig, (ax1, ax2) = plt.subplots(1, 2)
-    ax1.set_title("Correct")
-    ax2.set_title("Predicted")
-    plot_classified_impl(pq, exps, ax1)
-    plot_classified_impl(pq, preds, ax2)
-    pylab.show()
-
-def plot_classified_impl(pq, label, ax):
-    inds0 = np.nonzero(label == 0)
-    inds1 = np.nonzero(label == 1)
-    p, q = pq.transpose()
-    ax.plot(p[inds0], q[inds0], 'ro')
-    ax.plot(p[inds1], q[inds1], 'bo')
-
-#if True:
-if False:
-    fig, ax = plt.subplots()
-    ax.plot(p[inds1], q[inds1], 'ro')
-    ax.plot(p[inds2], q[inds2], 'bo')
-    pylab.show()
-
-def mlp(x, hidden=[32, 32, 32], classes=2):
-    hs = []
-    with nn.parameter_scope('mlp'):
-        h = x
-        for hid, hsize in enumerate(hidden):
-            with nn.parameter_scope('affine{}'.format(hid + 1)):
-                aff = PF.affine(h, hsize)
-                h = F.relu(aff)
-                #h = F.log(1 + F.exp(aff)) # analytic function
-                hs.append(h)
-        with nn.parameter_scope('classifier'):
-            y = PF.affine(h, classes)
-    return y, hs
+R.seed() # reseed for test data
 
 pq, label = random_data()
-
-x = nn.Variable(pq.shape)
-t = nn.Variable(label.shape)
-y, hs = mlp(x, [8])
-
-print (y.shape)
-print (t.shape)
-
-loss = F.mean(F.softmax_cross_entropy(y, t))
-
-x.d, t.d = pq, label
-loss.forward()
-print(-1, loss.d)
-
-#print(nn.get_parameters())
-
-learning_rate = 1e-3
-#solver = S.Sgd(learning_rate)
-#solver = S.Momentum(learning_rate)
-#solver = S.Nesterov(learning_rate)
-solver = S.Adadelta() # 0.10 - 0.14 (2 layers: 0.04 - 0.12; 3 layers: 0.03 - 0.11)
-#solver = S.Adagrad() # 0.27 - 0.33
-#solver = S.RMSprop() # 0.25 - 0.28
-#solver = S.Adam() # 0.19 - 0.29
-#solver = S.Adamax() # 0.26 - 0.39
-solver.set_parameters(nn.get_parameters())
-
-# Train
-
-for i in range(1000):
-    x.d, t.d = random_data()
-    loss.forward()
-    solver.zero_grad()
-    loss.backward()
-    solver.weight_decay(1e-5)
-    solver.update()
-    if i % 100 == 0:
-        print(i, loss.d)
-
-# Show prediction
-
-x.d, t.d = random_data()
-print(t.d.reshape(batch_size))
-y.forward()
-preds = y.d.argmax(axis=1)
+preds, loss = predict(pq, label)
 
 for name, param in nn.get_parameters().items():
     print(name, param.shape, param.g.flat[:20])
 
-#plot_classified(x.d, t.d.reshape(batch_size), preds)
+print("Test loss:", loss.d)
 
-exit(0)
+#plot_classified(x.d, t.d.reshape(BATCH_SIZE), preds)
 
-print(dir(loss.parent))
-print(loss.parent.inputs)
-print(loss.parent.inputs[0].parent)
-print(loss.parent.inputs[0].parent.inputs)
-print(loss.parent.inputs[0].parent.inputs[0].parent)
-print(loss.parent.inputs[0].parent.inputs[1].parent)
-print(loss.parent.inputs[0].parent.inputs[0].parent.inputs)
-print(loss.parent.inputs[0].parent.inputs[0].parent.inputs[0].parent)
-print(loss.parent.inputs[0].parent.inputs[0].parent.inputs[1].parent)
-print(loss.parent.inputs[0].parent.inputs[0].parent.inputs[2].parent)
-print(loss.parent.inputs[0].parent.inputs[0].parent.inputs[0].parent.inputs)
-print(loss.parent.inputs[0].parent.inputs[0].parent.inputs[0].parent.inputs[0].parent)
-print(loss.parent.inputs[0].parent.inputs[0].parent.inputs[0].parent.inputs[0].parent.inputs)
-print(loss.parent.inputs[0].parent.inputs[0].parent.inputs[0].parent.inputs[0].parent.inputs[0].parent)
-print(loss.parent.inputs[0].parent.inputs[0].parent.inputs[0].parent.inputs[0].parent.inputs[1].parent)
-print(loss.parent.inputs[0].parent.inputs[0].parent.inputs[0].parent.inputs[0].parent.inputs[2].parent)
+# Yet another reason to hate Python: no Array#flatten !
+def flatten(items, seqtypes=(list, tuple)):
+    for i, x in enumerate(items):
+        while i < len(items) and isinstance(items[i], seqtypes):
+            if isinstance(items, tuple):
+                items = list(items)
+            items[i:i+1] = items[i]
+    return items
 
-exit(0)
+def nnabla_to_smt2(var, collect={}, rcollect={}, assertions=[],
+                   nid=0, normal=True):
+    if var in rcollect:
+        return collect  # already processed this variable
+    rcollect[var] = nid
+    collect[nid] = var
+    cur_nid = nid
+    nid += 1
+    if var.parent is not None:
+        print(var.parent)
+        print(var.parent.inputs)
+        print(type(var.parent.inputs))
+        for index, input in enumerate(var.parent.inputs):
+            _, _, nid = nnabla_to_smt2(input, collect, rcollect, assertions,
+                                          nid, index == 0)
+        if var.parent.name == 'ReLU':
+            assert normal
+            assert len(var.parent.inputs) == 1
+            assert var.parent.inputs[0].shape == var.shape
+            param_nid = rcollect[var.parent.inputs[0]]
+            r = range(var.shape[1])
+            # make multi-dimensional index iterator for all but first dim
+            for i in range(2, len(var.shape)):
+                r = IT.product(r, range(var.shape[i]))
+            for index in r:
+                # flatten multi-dimensional index into sequence of ints
+                if not isinstance(index, tuple):
+                    index = (index,)
+                index = flatten(index)
+                index_str = '_'.join(map(str, index))
+                assertions.append('(= var_{}_{} (max 0 var_{}_{}))'.format(
+                    cur_nid, index_str, param_nid, index_str
+                ))
+        elif var.parent.name == 'Affine':
+            # Wx + b -- W and b are trained parameters
+            assert normal
+            assert len(var.shape) == 2
+            assert len(var.parent.inputs) == 3
+            var_x = var.parent.inputs[0]
+            var_W = var.parent.inputs[1]
+            var_b = var.parent.inputs[2]
+            assert len(var_x.shape) == 2
+            assert len(var_W.shape) == 2
+            assert len(var_b.shape) == 1
+        else:
+            raise Exception('Unsupported function: {}'.format(var.parent.name))
+    return collect, assertions, nid
 
-fn = '{}.nnp'.format(str(seed))
-print("Saving to file:", fn)
-nn_save.save(fn, {
-    'networks': [
-        {'name': 'net1',
-         'batch_size': batch_size,
-         'outputs': {'y': y},
-         'names': {'x': x}}
-    ],
-    'executors': [
-        {'name': 'runtime',
-         'network': 'net1',
-         'data': ['x'],
-         'output': ['y']}
-    ],
-})
+collect, assertions, _ = nnabla_to_smt2(y)
+for nid, var in collect.items():
+    print(nid, var, var.ndim)
+for assertion in assertions:
+    print(assertion)
