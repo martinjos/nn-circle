@@ -28,8 +28,8 @@ print("Test loss:", loss.d)
 
 #plot_classified(x.d, t.d.reshape(BATCH_SIZE), preds)
 
-def nnabla_to_smt2(var, names={}, collect={}, rcollect={}, assertions=[],
-                   nid=0, normal=True):
+def nnabla_to_smt2_info(var, names={}, collect={}, rcollect={}, assertions=[],
+                        nid=0, normal=True):
     if var in rcollect:
         return collect  # already processed this variable
     rcollect[var] = nid
@@ -43,8 +43,8 @@ def nnabla_to_smt2(var, names={}, collect={}, rcollect={}, assertions=[],
         print(var.parent.inputs)
         print(type(var.parent.inputs))
         for index, input in enumerate(var.parent.inputs):
-            _, _, nid = nnabla_to_smt2(input, names, collect, rcollect,
-                                       assertions, nid, index == 0)
+            _, _, nid = nnabla_to_smt2_info(input, names, collect, rcollect,
+                                            assertions, nid, index == 0)
 
         if var.parent.name == 'ReLU':
             assert normal
@@ -89,8 +89,11 @@ def nnabla_to_smt2(var, names={}, collect={}, rcollect={}, assertions=[],
             raise Exception('Unsupported function: {}'.format(var.parent.name))
     return collect, assertions, nid
 
-collect, assertions, _ = nnabla_to_smt2(y, {x: 'x', y: 'y'})
-for nid, var in collect.items():
-    print(nid, var, var.ndim)
-for assertion in assertions:
-    print(assertion)
+def nnabla_to_smt2(var, names={}):
+    collect, assertions, _ = nnabla_to_smt2_info(var, names)
+    smt2 = ''
+    smt2 += ''.join(map(lambda a: '(assert {})\n'.format(a), assertions))
+    return smt2
+
+smt2 = nnabla_to_smt2(y, {x: 'x', y: 'y'})
+print(smt2)
