@@ -28,15 +28,6 @@ print("Test loss:", loss.d)
 
 #plot_classified(x.d, t.d.reshape(BATCH_SIZE), preds)
 
-# Yet another reason to hate Python: no Array#flatten !
-def flatten(items, seqtypes=(list, tuple)):
-    for i, x in enumerate(items):
-        while i < len(items) and isinstance(items[i], seqtypes):
-            if isinstance(items, tuple):
-                items = list(items)
-            items[i:i+1] = items[i]
-    return items
-
 def nnabla_to_smt2(var, collect={}, rcollect={}, assertions=[],
                    nid=0, normal=True):
     if var in rcollect:
@@ -55,20 +46,12 @@ def nnabla_to_smt2(var, collect={}, rcollect={}, assertions=[],
         if var.parent.name == 'ReLU':
             assert normal
             assert len(var.parent.inputs) == 1
+            assert len(var.shape) == 2
             assert var.parent.inputs[0].shape == var.shape
             param_nid = rcollect[var.parent.inputs[0]]
-            r = range(var.shape[1])
-            # make multi-dimensional index iterator for all but first dim
-            for i in range(2, len(var.shape)):
-                r = IT.product(r, range(var.shape[i]))
-            for index in r:
-                # flatten multi-dimensional index into sequence of ints
-                if not isinstance(index, tuple):
-                    index = (index,)
-                index = flatten(index)
-                index_str = '_'.join(map(str, index))
+            for index in range(var.shape[1]):
                 assertions.append('(= var_{}_{} (max 0 var_{}_{}))'.format(
-                    cur_nid, index_str, param_nid, index_str
+                    cur_nid, index, param_nid, index
                 ))
         elif var.parent.name == 'Affine':
             # Wx + b -- W and b are trained parameters
