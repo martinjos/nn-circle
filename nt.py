@@ -28,8 +28,9 @@ print("Test loss:", loss.d)
 
 #plot_classified(x.d, t.d.reshape(BATCH_SIZE), preds)
 
-def nnabla_to_smt2_info(var, names={}, collect={}, rcollect={}, assertions=[],
-                        nid=0, normal=True):
+def nnabla_to_smt2_info(var, names={}, collect={}, rcollect={}, vars=[],
+                        assertions=[], nid=0, normal=True):
+
     if var in rcollect:
         return collect  # already processed this variable
     rcollect[var] = nid
@@ -37,19 +38,22 @@ def nnabla_to_smt2_info(var, names={}, collect={}, rcollect={}, assertions=[],
         names[var] = 'var_{}'.format(nid)
     collect[nid] = var
     cur_name = names[var]
+    if normal:
+        assert len(var.shape) == 2
+        for index in range(var.shape[1]):
+            vars.append('{}_{}'.format(cur_name, index))
     nid += 1
     if var.parent is not None:
         print(var.parent)
         print(var.parent.inputs)
         print(type(var.parent.inputs))
         for index, input in enumerate(var.parent.inputs):
-            _, _, nid = nnabla_to_smt2_info(input, names, collect, rcollect,
-                                            assertions, nid, index == 0)
+            _, _, _, nid = nnabla_to_smt2_info(input, names, collect, rcollect,
+                                               vars, assertions, nid, index == 0)
 
         if var.parent.name == 'ReLU':
             assert normal
             assert len(var.parent.inputs) == 1
-            assert len(var.shape) == 2
             assert var.parent.inputs[0].shape == var.shape
             param_name = names[var.parent.inputs[0]]
             for index in range(var.shape[1]):
@@ -59,7 +63,6 @@ def nnabla_to_smt2_info(var, names={}, collect={}, rcollect={}, assertions=[],
         elif var.parent.name == 'Affine':
             # Wx + b -- W and b are trained parameters
             assert normal
-            assert len(var.shape) == 2
             assert len(var.parent.inputs) == 3
             var_x = var.parent.inputs[0]
             var_W = var.parent.inputs[1]
@@ -87,12 +90,16 @@ def nnabla_to_smt2_info(var, names={}, collect={}, rcollect={}, assertions=[],
                 ))
         else:
             raise Exception('Unsupported function: {}'.format(var.parent.name))
-    return collect, assertions, nid
+    return collect, vars, assertions, nid
 
 def nnabla_to_smt2(var, names={}):
-    collect, assertions, _ = nnabla_to_smt2_info(var, names)
+    collect, vars, assertions, _ = nnabla_to_smt2_info(var, names)
     smt2 = ''
+    smt2 += '(set-logic QF_NRA)\n'
+    smt2 += ''.join(map(lambda n: '(declare-fun {} () Real)\n'.format(n), vars))
     smt2 += ''.join(map(lambda a: '(assert {})\n'.format(a), assertions))
+    smt2 += '(check-sat)\n'
+    smt2 += '(exit)\n'
     return smt2
 
 smt2 = nnabla_to_smt2(y, {x: 'x', y: 'y'})
