@@ -6,6 +6,7 @@ import numpy.random as R
 import itertools as IT
 
 from ntshared import *
+from nn_smt2 import *
 
 seed()
 
