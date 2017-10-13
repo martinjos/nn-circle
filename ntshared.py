@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import math
 import time
 import sys
@@ -75,7 +73,7 @@ def setup_network():
 
     return x, t, y, loss, hs
 
-def train_network(loss):
+def train_network(loss, x, t):
     solver = S.Adadelta() # 0.10 - 0.14 (2 layers: 0.04 - 0.12; 3 layers: 0.03 - 0.11)
     solver.set_parameters(nn.get_parameters())
 
@@ -91,7 +89,7 @@ def train_network(loss):
 
     return solver
 
-def predict(pq, label):
+def predict(pq, label, x, t, y, loss):
     x.d, t.d = pq, label
     eprint(t.d.reshape(BATCH_SIZE))
     loss.forward()

@@ -5,21 +5,18 @@ import nnabla.functions as F  # it crashes without this
 import numpy.random as R
 import itertools as IT
 
-# I hate you, Python
-import os
-from pathlib import Path
-exec(Path(os.path.dirname(__file__) + '/' + 'ntshared.py').read_text())
+from ntshared import *
 
 seed()
 
 x, t, y, loss, hs = setup_network()
 
-train_network(loss)
+train_network(loss, x, t)
 
 R.seed() # reseed for test data
 
 pq, label = random_data()
-preds, loss = predict(pq, label)
+preds, loss = predict(pq, label, x, t, y, loss)
 
 #for name, param in nn.get_parameters().items():
 #    print(name, param.shape, param.g.flat[:20])
