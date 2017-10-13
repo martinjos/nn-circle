@@ -1,3 +1,6 @@
+import re
+from pathlib import Path
+
 from shared import *
 
 def nnabla_to_smt2_info(var, names={}, collect={}, rcollect={}, vars=[],
@@ -73,3 +76,27 @@ def nnabla_to_smt2(var, names={}):
     smt2 += '(check-sat)\n'
     smt2 += '(exit)\n'
     return smt2
+
+def parse_smt2(string):
+    tokreg = r'(?x) ( \s+ )| [()] | [^\s()]+ '
+    cur = []
+    stack = []
+    for match in re.finditer(tokreg, string):
+        if match.group(1) is not None:
+            continue
+        elif match.group(0) == '(':
+            new = []
+            stack.append(cur)
+            cur.append(new)
+            cur = new
+        elif match.group(0) == ')':
+            cur = stack.pop()
+        else:
+            try:
+                cur.append(float(match.group(0)))
+            except ValueError:
+                cur.append(match.group(0))
+    return cur
+
+def parse_smt2_file(filename):
+    return parse_smt2(Path(filename).read_text('utf-8'))
