@@ -58,12 +58,12 @@ def mlp(x, hidden=[32, 32, 32], classes=2):
             y = PF.affine(h, classes)
     return y, hs
 
-def setup_network():
+def setup_network(layers=1, size=8):
     pq, label = random_data()
 
     x = nn.Variable(pq.shape)
     t = nn.Variable(label.shape)
-    y, hs = mlp(x, [8])
+    y, hs = mlp(x, [size] * layers)
 
     eprint (y.shape)
     eprint (t.shape)
@@ -95,9 +95,9 @@ def predict(pq, label, x, t, y, loss):
     preds = y.d.argmax(axis=1)
     return preds, loss
 
-def seed():
-    if len(sys.argv) > 1:
-        seed = np.int64(sys.argv[1])
+def seed(arg):
+    if arg is not None:
+        seed = np.int64(arg % 2**32)
     else:
         seed = np.int64(np.float64(time.time()).view(np.uint64) % 2**32)
 
