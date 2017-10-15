@@ -20,6 +20,8 @@ parser.add_argument('-L', '--layers', type=int, default=1,
                     help='number of hidden layers of neural network')
 parser.add_argument('-S', '--size', type=int, default=8,
                     help='size of each hidden layer of neural network')
+parser.add_argument('-B', '--batch', type=int, default=BATCH_SIZE,
+                    help='batch size')
 parser.add_argument('--plot', action='store_true',
                     help='plot test results')
 parser.add_argument('--save-tests', nargs='?', type=int, const=BATCH_SIZE,
@@ -30,13 +32,13 @@ args = parser.parse_args()
 
 args.seed = seed(args.seed)
 
-x, t, y, loss, hs = setup_network(args.layers, args.size)
+x, t, y, loss, hs = setup_network(args.layers, args.size, batch_size=args.batch)
 
 train_network(loss, x, t)
 
 args.test_seed = seed(args.test_seed) # reseed for test data
 
-pq, label = random_data()
+pq, label = random_data(args.batch)
 preds, loss = predict(pq, label, x, t, y, loss)
 
 #for name, param in nn.get_parameters().items():
@@ -53,4 +55,4 @@ smt2 = nnabla_to_smt2(y, {x: 'x', y: 'y'},
 print(smt2, end='')
 
 if args.plot:
-    plot_classified(x.d, t.d.reshape(BATCH_SIZE), preds)
+    plot_classified(x.d, t.d.reshape(t.shape[0]), preds)

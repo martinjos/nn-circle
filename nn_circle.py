@@ -58,8 +58,8 @@ def mlp(x, hidden=[32, 32, 32], classes=2):
             y = PF.affine(h, classes)
     return y, hs
 
-def setup_network(layers=1, size=8):
-    pq, label = random_data()
+def setup_network(layers=1, size=8, batch_size=BATCH_SIZE):
+    pq, label = random_data(batch_size)
 
     x = nn.Variable(pq.shape)
     t = nn.Variable(label.shape)
@@ -77,7 +77,7 @@ def train_network(loss, x, t):
     solver.set_parameters(nn.get_parameters())
 
     for i in range(1000):
-        x.d, t.d = random_data()
+        x.d, t.d = random_data(x.shape[0])
         loss.forward()
         solver.zero_grad()
         loss.backward()
@@ -90,7 +90,7 @@ def train_network(loss, x, t):
 
 def predict(pq, label, x, t, y, loss):
     x.d, t.d = pq, label
-    eprint(t.d.reshape(BATCH_SIZE))
+    eprint(t.d.reshape(t.shape[0]))
     loss.forward()
     preds = y.d.argmax(axis=1)
     return preds, loss
