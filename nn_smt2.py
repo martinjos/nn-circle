@@ -68,7 +68,7 @@ def nnabla_to_smt2_info(var, names={}, collect={}, rcollect={}, vars=[],
     return collect, vars, assertions, nid
 
 def nnabla_to_smt2(var, names={}, save_test=None, seed=None, test_seed=None,
-                   test_eps=1e-6, test_batch=None):
+                   test_eps=1e-6, test_batch=None, include=None):
     collect, vars, assertions, _ = nnabla_to_smt2_info(var, names)
     smt2 = ''
     smt2 += '(set-logic QF_NRA)\n'
@@ -99,6 +99,8 @@ def nnabla_to_smt2(var, names={}, save_test=None, seed=None, test_seed=None,
                 names[y] + '_1', y.d[i][1] + test_eps
             ))
         smt2 += '(assert (or\n {}))\n\n'.format('\n '.join(cases))
+    if include is not None:
+        smt2 += Path(include).read_text('utf-8') + '\n'
     smt2 += '(check-sat)\n'
     smt2 += '(exit)\n'
     return smt2

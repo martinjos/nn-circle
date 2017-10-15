@@ -28,6 +28,8 @@ parser.add_argument('--save-tests', nargs='?', type=int, const=BATCH_SIZE,
                     help='save test data to smt2 file - can optionally specify number of tests to save')
 parser.add_argument('--eps', type=float, default=1e-6,
                     help='epsilon for test data assertion in smt2 file')
+parser.add_argument('--include', type=str,
+                    help='file to include in smt2 output, before (check-sat)')
 args = parser.parse_args()
 
 args.seed = seed(args.seed)
@@ -51,7 +53,8 @@ smt2 = nnabla_to_smt2(y, {x: 'x', y: 'y'},
                       test_batch = args.save_tests,
                       seed = args.seed,
                       test_seed = args.test_seed,
-                      test_eps = args.eps)
+                      test_eps = args.eps,
+                      include=args.include)
 print(smt2, end='')
 
 if args.plot:
