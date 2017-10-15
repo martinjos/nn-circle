@@ -103,3 +103,4 @@ def seed(arg):
 
     eprint("Seed:", seed)
     R.seed(seed)
+    return seed

@@ -22,15 +22,17 @@ parser.add_argument('-S', '--size', type=int, default=8,
                     help='size of each hidden layer of neural network')
 parser.add_argument('--plot', action='store_true',
                     help='plot test results')
+parser.add_argument('--save-test', action='store_true',
+                    help='save test data to smt2 file')
 args = parser.parse_args()
 
-seed(args.seed)
+args.seed = seed(args.seed)
 
 x, t, y, loss, hs = setup_network(args.layers, args.size)
 
 train_network(loss, x, t)
 
-seed(args.test_seed) # reseed for test data
+args.test_seed = seed(args.test_seed) # reseed for test data
 
 pq, label = random_data()
 preds, loss = predict(pq, label, x, t, y, loss)
@@ -40,8 +42,11 @@ preds, loss = predict(pq, label, x, t, y, loss)
 
 eprint("Test loss:", loss.d)
 
-smt2 = nnabla_to_smt2(y, {x: 'x', y: 'y'})
-print(smt2)
+smt2 = nnabla_to_smt2(y, {x: 'x', y: 'y'},
+                      save_test = x if args.save_test else None,
+                      seed = args.seed,
+                      test_seed = args.test_seed)
+print(smt2, end='')
 
 if args.plot:
     plot_classified(x.d, t.d.reshape(BATCH_SIZE), preds)
