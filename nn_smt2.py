@@ -67,7 +67,8 @@ def nnabla_to_smt2_info(var, names={}, collect={}, rcollect={}, vars=[],
             raise Exception('Unsupported function: {}'.format(var.parent.name))
     return collect, vars, assertions, nid
 
-def nnabla_to_smt2(var, names={}, save_test=None, seed=None, test_seed=None):
+def nnabla_to_smt2(var, names={}, save_test=None, seed=None, test_seed=None,
+                   test_eps=1e-6, test_batch=None):
     collect, vars, assertions, _ = nnabla_to_smt2_info(var, names)
     smt2 = ''
     smt2 += '(set-logic QF_NRA)\n'
@@ -78,20 +79,24 @@ def nnabla_to_smt2(var, names={}, save_test=None, seed=None, test_seed=None):
     smt2 += '\n; NN assertions\n\n'
     smt2 += ''.join(map(lambda a: '(assert {})\n'.format(a), assertions))
     smt2 += '\n'
-    if save_test:
+    if save_test is not None:
         if test_seed:
             smt2 += '; Test seed = {}\n\n'.format(test_seed)
         (x, y) = (save_test, var)
         assert x.shape[0] == y.shape[0]
+        assert test_batch <= x.shape[0]
         smt2 += '; Assertion for test data\n\n'
         cases = []
-        for i in range(0, x.shape[0]):
-            cases.append(('(and (= {} {}) (= {} {})\n      '
-                           '(or (not (= {} {})) (not (= {} {}))))').format(
+        for i in range(0, test_batch):
+            cases.append(('(and (= {} {}) (= {} {})\n '
+                          ' (or (< {} {}) (> {} {})\n '
+                          '     (< {} {}) (> {} {})))').format(
                 names[x] + '_0', x.d[i][0],
                 names[x] + '_1', x.d[i][1],
-                names[y] + '_0', y.d[i][0],
-                names[y] + '_1', y.d[i][1]
+                names[y] + '_0', y.d[i][0] - test_eps,
+                names[y] + '_0', y.d[i][0] + test_eps,
+                names[y] + '_1', y.d[i][1] - test_eps,
+                names[y] + '_1', y.d[i][1] + test_eps
             ))
         smt2 += '(assert (or\n {}))\n\n'.format('\n '.join(cases))
     smt2 += '(check-sat)\n'
