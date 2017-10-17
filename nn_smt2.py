@@ -3,6 +3,16 @@ from pathlib import Path
 
 from shared import *
 
+# Represent a Python 3 float losslessly as an SMT-LIBv2 Real of minimal length
+def real_repr(f):
+    s = repr(float(f))
+    m1 = re.search(r'\.([0-9]+)', s)
+    prec = 0 if m1 is None else len(m1.group(1))
+    m2 = re.search(r'[Ee]([+-][0-9]+)', s)
+    prec -= 0 if m2 is None else int(m2.group(1))
+    prec = max(1, prec)
+    return ('{:.' + str(prec) + 'f}').format(f)
+
 def nnabla_to_smt2_info(var, names={}, collect={}, rcollect={}, vars=[],
                         assertions=[], nid=0, normal=True):
 
@@ -52,15 +62,15 @@ def nnabla_to_smt2_info(var, names={}, collect={}, rcollect={}, vars=[],
             for i in range(var.shape[1]):
                 terms = []
                 for j in range(var_x.shape[1]):
-                    terms.append('(* {: .17f} {}_{})'.format(
-                        var_W.d[j][i],
+                    terms.append('(* {} {}_{})'.format(
+                        real_repr(var_W.d[j][i]),
                         x_name,
                         j
                     ))
-                assertions.append('(= {}_{} (+ {: .17f} {}))'.format(
+                assertions.append('(= {}_{} (+ {} {}))'.format(
                     cur_name,
                     i,
-                    var_b.d[i],
+                    real_repr(var_b.d[i]),
                     ' '.join(terms)
                 ))
         else:
@@ -91,15 +101,15 @@ def nnabla_to_smt2(var, names={}, save_test=None, seed=None, test_seed=None,
         smt2 += '; Assertion for test data\n\n'
         cases = []
         for i in range(0, test_batch):
-            cases.append(('(and (= {} {: .17f}) (= {} {: .17f})\n '
-                          ' (or (< {} {: .17f}) (> {} {: .17f})\n '
-                          '     (< {} {: .17f}) (> {} {: .17f})))').format(
-                names[x] + '_0', x.d[i][0],
-                names[x] + '_1', x.d[i][1],
-                names[y] + '_0', y.d[i][0] - test_eps,
-                names[y] + '_0', y.d[i][0] + test_eps,
-                names[y] + '_1', y.d[i][1] - test_eps,
-                names[y] + '_1', y.d[i][1] + test_eps
+            cases.append(('(and (= {} {}) (= {} {})\n '
+                          ' (or (< {} {}) (> {} {})\n '
+                          '     (< {} {}) (> {} {})))').format(
+                names[x] + '_0', real_repr(x.d[i][0]),
+                names[x] + '_1', real_repr(x.d[i][1]),
+                names[y] + '_0', real_repr(y.d[i][0] - test_eps),
+                names[y] + '_0', real_repr(y.d[i][0] + test_eps),
+                names[y] + '_1', real_repr(y.d[i][1] - test_eps),
+                names[y] + '_1', real_repr(y.d[i][1] + test_eps)
             ))
         smt2 += '(assert (or\n {}))\n\n'.format('\n '.join(cases))
     if include is not None:
