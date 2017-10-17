@@ -52,12 +52,12 @@ def nnabla_to_smt2_info(var, names={}, collect={}, rcollect={}, vars=[],
             for i in range(var.shape[1]):
                 terms = []
                 for j in range(var_x.shape[1]):
-                    terms.append('(* {} {}_{})'.format(
+                    terms.append('(* {: .17f} {}_{})'.format(
                         var_W.d[j][i],
                         x_name,
                         j
                     ))
-                assertions.append('(= {}_{} (+ {} {}))'.format(
+                assertions.append('(= {}_{} (+ {: .17f} {}))'.format(
                     cur_name,
                     i,
                     var_b.d[i],
@@ -91,9 +91,9 @@ def nnabla_to_smt2(var, names={}, save_test=None, seed=None, test_seed=None,
         smt2 += '; Assertion for test data\n\n'
         cases = []
         for i in range(0, test_batch):
-            cases.append(('(and (= {} {}) (= {} {})\n '
-                          ' (or (< {} {}) (> {} {})\n '
-                          '     (< {} {}) (> {} {})))').format(
+            cases.append(('(and (= {} {: .17f}) (= {} {: .17f})\n '
+                          ' (or (< {} {: .17f}) (> {} {: .17f})\n '
+                          '     (< {} {: .17f}) (> {} {: .17f})))').format(
                 names[x] + '_0', x.d[i][0],
                 names[x] + '_1', x.d[i][1],
                 names[y] + '_0', y.d[i][0] - test_eps,
