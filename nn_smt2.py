@@ -32,7 +32,7 @@ def nnabla_to_smt2_info(var, names={}, collect={}, rcollect={}, vars=[],
             assert var.parent.inputs[0].shape == var.shape
             param_name = names[var.parent.inputs[0]]
             for index in range(var.shape[1]):
-                assertions.append('(= {}_{} (max 0 {}_{}))'.format(
+                assertions.append('(= {}_{} (max 0.0 {}_{}))'.format(
                     cur_name, index, param_name, index
                 ))
         elif var.parent.name == 'Affine':
@@ -68,10 +68,13 @@ def nnabla_to_smt2_info(var, names={}, collect={}, rcollect={}, vars=[],
     return collect, vars, assertions, nid
 
 def nnabla_to_smt2(var, names={}, save_test=None, seed=None, test_seed=None,
-                   test_eps=1e-6, test_batch=None, include=None):
+                   test_eps=1e-6, test_batch=None, include=None, std=False):
     collect, vars, assertions, _ = nnabla_to_smt2_info(var, names)
     smt2 = ''
     smt2 += '(set-logic QF_NRA)\n'
+    if std:
+        smt2 += '\n(define-fun max ((x Real) (y Real)) Real ' \
+                '(ite (>= x y) x y))\n'
     if seed:
         smt2 += '\n; Training seed = {}\n'.format(seed)
     smt2 += '\n; NN variables\n\n'

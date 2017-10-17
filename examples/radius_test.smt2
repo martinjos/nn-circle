@@ -4,7 +4,7 @@
 
 ; Radius test - assertions
 
-(assert (= sq_radius (+ (^ x_0 2) (^ x_1 2))))
+(assert (= sq_radius (+ (* x_0 x_0) (* x_1 x_1))))
 
 (assert (and (<= -1 x_0)   ; restrict input to box
              (<= x_0 1)

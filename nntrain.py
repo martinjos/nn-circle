@@ -30,6 +30,8 @@ parser.add_argument('--eps', type=float, default=1e-6,
                     help='epsilon for test data assertion in smt2 file')
 parser.add_argument('--include', type=str,
                     help='file to include in smt2 output, before (check-sat)')
+parser.add_argument('--std', action='store_true',
+                    help='output standard smt2')
 args = parser.parse_args()
 
 args.seed = seed(args.seed)
@@ -54,7 +56,8 @@ smt2 = nnabla_to_smt2(y, {x: 'x', y: 'y'},
                       seed = args.seed,
                       test_seed = args.test_seed,
                       test_eps = args.eps,
-                      include=args.include)
+                      include=args.include,
+                      std=args.std)
 print(smt2, end='')
 
 if args.plot:

@@ -1,5 +1,7 @@
 (set-logic QF_NRA)
 
+(define-fun max ((x Real) (y Real)) Real (ite (>= x y) x y))
+
 ; Training seed = 3912243200
 
 ; NN variables
